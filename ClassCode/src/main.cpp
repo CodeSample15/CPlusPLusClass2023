@@ -18,12 +18,42 @@
 
 using namespace vex;
 
-void move(int distance, int speed) {
-  RightMotor.setPosition(0, degrees);
-  RightMotor.setVelocity(speed, percent);
-  LeftMotor.setVelocity(speed, percent);
+float kp = 5;
+float ki = 20;
+float kd = 5;
 
-  while(RightMotor.position(degrees) < distance) {
+float dt = 20;
+
+float prevError = 0;
+float integral = 0;
+
+float pid(float error) {
+  float p = error * kp;
+
+  if(error < 60 && error > 1)
+    integral += error * (dt/1000);
+  else
+    integral = 0;
+
+  float i = integral * ki;
+
+  float d = (error - prevError) * kd;
+  d /= dt;
+
+  wait(dt, msec);
+
+  return p + i + d;
+}
+
+void move(int distance) {
+  RightMotor.setPosition(0, degrees);
+
+  while(abs((int)(distance - RightMotor.position(degrees))) > 3) {
+    float speed = pid(distance - RightMotor.position(degrees)) / 10;
+
+    RightMotor.setVelocity(speed, percent);
+    LeftMotor.setVelocity(speed, percent);
+
     RightMotor.spin(forward);
     LeftMotor.spin(forward);
   }
@@ -36,5 +66,5 @@ int main() {
   // Initializing Robot Configuration. DO NOT REMOVE!
   vexcodeInit();
   
-  move(1000, 50);
+  move(1000);
 }
