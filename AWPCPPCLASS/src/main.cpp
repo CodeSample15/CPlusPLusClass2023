@@ -23,24 +23,42 @@ struct tune {
   float kp;
   float kd;
   float dt;
-} drivePid={1, 0, 0}, turnPid={1, 0, 0};
+} drivePid={0.4, 0, 20}, turnPid={0.3, 0, 20};
 
 float preverror = 0;
-float PD(struct tune tune, float error) {
-  float p = error * tune.kp;
-  float d = (error - preverror) / tune.dt;
-  d *= tune.kd;
+float PD(struct tune t, float error) {
+  float p = error * t.kp;
+  float d = (error - preverror) / t.dt;
+  d *= t.kd;
 
   preverror = error;
-  wait(tune.kd, msec);
+  wait(t.dt, msec);
   return p + d;
+}
+
+float PD(struct tune t, float error, float& slew, float slewRate) {
+  float p = error * t.kp;
+  float d = (error - preverror) / t.dt;
+  d *= t.kd;
+
+  preverror = error;
+  wait(t.dt, msec);
+
+  float pd = p + d;
+
+  slew += slewRate * (pd > 0 ? 1 : -1);
+  if(abs((int)slew) < abs((int)pd))
+    return slew;
+  else
+    return pd;
 }
 
 void move(int dist) {
   rightmotor.setPosition(0, degrees);
 
+  float slew = 0;
   while(abs(dist - (int)rightmotor.position(degrees)) > 3) {
-    float speed = PD(drivePid, dist - rightmotor.position(degrees));
+    float speed = PD(drivePid, dist - rightmotor.position(degrees), slew, 5);
 
     rightmotor.setVelocity(speed, percent);
     leftmotor.setVelocity(speed, percent);
@@ -56,7 +74,7 @@ void move(int dist) {
 void turn_pd(int rot) {
   inert.setRotation(0, degrees);
 
-  while(abs((int)inert.rotation(degrees)) < abs(rot)) {
+  while(abs(rot - (int)inert.rotation(degrees)) > 2) {
     float speed = PD(turnPid, rot - inert.rotation(degrees));
 
     rightmotor.setVelocity(-speed, percent);
@@ -77,4 +95,9 @@ int main() {
   inert.calibrate();
   wait(3, sec);
   inert.setRotation(0, degrees);
+
+  move(1000);
+  turn_pd(180);
+  move(1000);
+  turn_pd(180);
 }
