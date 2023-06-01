@@ -23,10 +23,9 @@ struct tune {
   float kp;
   float kd;
   float dt;
-} drivePid={0.4, 0, 20}, turnPid={0.3, 0, 20};
+} drivePid={0.25, 0.7, 20}, turnPid={0.6, 0.6, 20};
 
-float preverror = 0;
-float PD(struct tune t, float error) {
+float PD(struct tune t, float error, float& preverror) {
   float p = error * t.kp;
   float d = (error - preverror) / t.dt;
   d *= t.kd;
@@ -36,7 +35,18 @@ float PD(struct tune t, float error) {
   return p + d;
 }
 
-float PD(struct tune t, float error, float& slew, float slewRate) {
+void display() {
+  while(true) {
+    Brain.Screen.setCursor(1,1);
+    Brain.Screen.print("inertial: %f", inert.rotation(degrees));
+
+    wait(10, msec);
+
+    Brain.Screen.clearScreen();
+  }
+}
+
+float PD(struct tune t, float error, float& preverror, float& slew, float slewRate) {
   float p = error * t.kp;
   float d = (error - preverror) / t.dt;
   d *= t.kd;
@@ -53,15 +63,19 @@ float PD(struct tune t, float error, float& slew, float slewRate) {
     return pd;
 }
 
-void move(int dist) {
+void move(int dist, float s) {
   rightmotor.setPosition(0, degrees);
+  inert.setRotation(0, degrees);
 
+  float preverrorD = 0;
+  float preverrorT = 0;
   float slew = 0;
   while(abs(dist - (int)rightmotor.position(degrees)) > 3) {
-    float speed = PD(drivePid, dist - rightmotor.position(degrees), slew, 5);
+    float speed = PD(drivePid, dist - rightmotor.position(degrees), preverrorD, slew, 5) * s;
+    float turnSpeed = PD(turnPid, inert.rotation(degrees), preverrorT);
 
-    rightmotor.setVelocity(speed, percent);
-    leftmotor.setVelocity(speed, percent);
+    rightmotor.setVelocity(speed + turnSpeed, percent);
+    leftmotor.setVelocity(speed - turnSpeed, percent);
 
     rightmotor.spin(forward);
     leftmotor.spin(forward);
@@ -73,9 +87,10 @@ void move(int dist) {
 
 void turn_pd(int rot) {
   inert.setRotation(0, degrees);
+  float preverror = 0;
 
   while(abs(rot - (int)inert.rotation(degrees)) > 2) {
-    float speed = PD(turnPid, rot - inert.rotation(degrees));
+    float speed = PD(turnPid, rot - inert.rotation(degrees), preverror);
 
     rightmotor.setVelocity(-speed, percent);
     leftmotor.setVelocity(speed, percent);
@@ -91,13 +106,17 @@ void turn_pd(int rot) {
 int main() {
   // Initializing Robot Configuration. DO NOT REMOVE!
   vexcodeInit();
+  thread t(display);
   
   inert.calibrate();
-  wait(3, sec);
+  while(inert.isCalibrating())
+    wait(50, msec);
   inert.setRotation(0, degrees);
 
-  move(1000);
-  turn_pd(180);
-  move(1000);
-  turn_pd(180);
+  move(1000, 1);
+  turn_pd(90);
+  move(1100, 1);
+  turn_pd(-90);
+  move(1800, 1);
+  move(-1800, 1);
 }

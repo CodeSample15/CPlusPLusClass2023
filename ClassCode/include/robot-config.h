@@ -5,6 +5,7 @@ extern brain Brain;
 // VEXcode devices
 extern motor LeftMotor;
 extern motor RightMotor;
+extern inertial inert;
 
 /**
  * Used to initialize code/tasks/devices added using tools in VEXcode Pro.

@@ -12,6 +12,7 @@
 // [Name]               [Type]        [Port(s)]
 // LeftMotor            motor         1               
 // RightMotor           motor         2               
+// inert                inertial      3               
 // ---- END VEXCODE CONFIGURED DEVICES ----
 
 #include "vex.h"
@@ -66,5 +67,12 @@ int main() {
   // Initializing Robot Configuration. DO NOT REMOVE!
   vexcodeInit();
   
+  inert.calibrate();
+  while(inert.isCalibrating())
+    wait(5, msec);
+  inert.setRotation(0, degrees);
+
+
+
   move(1000);
 }
