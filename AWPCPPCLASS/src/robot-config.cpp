@@ -11,6 +11,8 @@ brain  Brain;
 motor leftmotor = motor(PORT1, ratio18_1, false);
 motor rightmotor = motor(PORT2, ratio18_1, true);
 inertial inert = inertial(PORT3);
+encoder EncoderX = encoder(Brain.ThreeWirePort.A);
+encoder EncoderY = encoder(Brain.ThreeWirePort.C);
 
 // VEXcode generated functions
 
